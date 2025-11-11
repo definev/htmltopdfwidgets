@@ -22,7 +22,17 @@ class HTMLToPdf extends HtmlCodec {
       double defaultFontSize = 12.0,
       double defaultFontHeight = 1.2,
       //custom html tag styles
-      HtmlTagStyle tagStyle = const HtmlTagStyle()}) async {
+      HtmlTagStyle tagStyle = const HtmlTagStyle(),
+      //custom builder for bullet list items
+      Widget Function(Widget childValue, HtmlTagStyle customStyles)?
+          bulletListBuilder,
+      //custom builder for numbered list items
+      Widget Function(Widget childValue, int index, TextStyle baseTextStyle,
+              HtmlTagStyle customStyles)?
+          numberListBuilder,
+      //custom builder for quote widgets
+      Widget Function(Widget childValue, HtmlTagStyle customStyles)?
+          quoteBuilder}) async {
     //decode that handle all html tags logic
     final widgetDecoder = WidgetsHTMLDecoder(
         //font fall back if provided
@@ -33,7 +43,13 @@ class HTMLToPdf extends HtmlCodec {
         defaultFontSize: defaultFontSize,
         defaultFontHeight: defaultFontHeight,
         //custom html tags style
-        customStyles: tagStyle);
+        customStyles: tagStyle,
+        //custom bullet list builder
+        bulletListBuilder: bulletListBuilder,
+        //custom numbered list builder
+        numberListBuilder: numberListBuilder,
+        //custom quote builder
+        quoteBuilder: quoteBuilder);
     //convert function that convert string to dom nodes that that dom nodes will be converted
     return await widgetDecoder.convert(html);
   }
@@ -58,7 +74,17 @@ class HTMLToPdf extends HtmlCodec {
       bool withDefaultBlockSyntaxes = true,
       bool withDefaultInlineSyntaxes = true,
       //custom html tag styles
-      HtmlTagStyle tagStyle = const HtmlTagStyle()}) async {
+      HtmlTagStyle tagStyle = const HtmlTagStyle(),
+      //custom builder for bullet list items
+      Widget Function(Widget childValue, HtmlTagStyle customStyles)?
+          bulletListBuilder,
+      //custom builder for numbered list items
+      Widget Function(Widget childValue, int index, TextStyle baseTextStyle,
+              HtmlTagStyle customStyles)?
+          numberListBuilder,
+      //custom builder for quote widgets
+      Widget Function(Widget childValue, HtmlTagStyle customStyles)?
+          quoteBuilder}) async {
     // TODO: implement convertMarkdown
     final widgetDecoder = WidgetsHTMLDecoder(
         //font fall back if provided
@@ -69,7 +95,13 @@ class HTMLToPdf extends HtmlCodec {
         defaultFontSize: defaultFontSize,
         defaultFontHeight: defaultFontHeight,
         //custom html tags style
-        customStyles: tagStyle);
+        customStyles: tagStyle,
+        //custom bullet list builder
+        bulletListBuilder: bulletListBuilder,
+        //custom numbered list builder
+        numberListBuilder: numberListBuilder,
+        //custom quote builder
+        quoteBuilder: quoteBuilder);
     final html = markdownToHtml(
       markDown,
       extensionSet: extensionSet ?? ExtensionSet.gitHubFlavored,
@@ -101,7 +133,17 @@ abstract class HtmlCodec {
       {List<Font> fontFallback = const [],
       bool wrapInParagraph = false,
       FutureOr<Font> Function(String, bool, bool)? fontResolver,
-      HtmlTagStyle tagStyle = const HtmlTagStyle()});
+      HtmlTagStyle tagStyle = const HtmlTagStyle(),
+      //custom builder for bullet list items
+      Widget Function(Widget childValue, HtmlTagStyle customStyles)?
+          bulletListBuilder,
+      //custom builder for numbered list items
+      Widget Function(Widget childValue, int index, TextStyle baseTextStyle,
+              HtmlTagStyle customStyles)?
+          numberListBuilder,
+      //custom builder for quote widgets
+      Widget Function(Widget childValue, HtmlTagStyle customStyles)?
+          quoteBuilder});
   Future<List<Widget>> convertMarkdown(String markDown,
       {List<Font> fontFallback = const [],
       //font resolver (font name, bold, italic) => font
@@ -120,5 +162,15 @@ abstract class HtmlCodec {
       bool withDefaultBlockSyntaxes = true,
       bool withDefaultInlineSyntaxes = true,
       //custom html tag styles
-      HtmlTagStyle tagStyle = const HtmlTagStyle()});
+      HtmlTagStyle tagStyle = const HtmlTagStyle(),
+      //custom builder for bullet list items
+      Widget Function(Widget childValue, HtmlTagStyle customStyles)?
+          bulletListBuilder,
+      //custom builder for numbered list items
+      Widget Function(Widget childValue, int index, TextStyle baseTextStyle,
+              HtmlTagStyle customStyles)?
+          numberListBuilder,
+      //custom builder for quote widgets
+      Widget Function(Widget childValue, HtmlTagStyle customStyles)?
+          quoteBuilder});
 }

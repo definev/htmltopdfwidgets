@@ -68,6 +68,15 @@ class HtmlTagStyle {
 
   /// The height of the divider in a PDF document.
   final double dividerHight;
+
+  /// The gap between list items (bullet and numbered lists).
+  /// This controls the vertical spacing between each item in a list.
+  final double listItemGap;
+
+  /// The gap between paragraphs.
+  /// This controls the vertical spacing between consecutive paragraph elements.
+  final double paragraphGap;
+
   const HtmlTagStyle(
       {this.boldStyle,
       this.italicStyle,
@@ -93,5 +102,7 @@ class HtmlTagStyle {
       this.codeblockColor = PdfColors.grey,
       this.codeDecoration,
       this.dividerthickness = 1.0,
-      this.dividerColor = PdfColors.grey});
+      this.dividerColor = PdfColors.grey,
+      this.listItemGap = 4.0,
+      this.paragraphGap = 8.0});
 }

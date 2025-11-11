@@ -10,13 +10,10 @@ import 'package:htmltopdfwidgets/src/utils/app_assets.dart';
 import '../htmltopdfwidgets.dart';
 import 'extension/color_extension.dart';
 import 'html_tags.dart';
-import 'pdfwidgets/bullet_list.dart';
 import 'pdfwidgets/image_element_io.dart'
     if (dart.library.html) 'pdfwidgets/image_element_web.dart';
-import 'pdfwidgets/number_list.dart';
-import 'pdfwidgets/quote_widget.dart';
 
-////html deocoder that deocde html and convert it into pdf widgets
+////html deocder that deocde html and convert it into pdf widgets
 class WidgetsHTMLDecoder {
   final double defaultFontSize;
   final double defaultFontHeight;
@@ -32,6 +29,25 @@ class WidgetsHTMLDecoder {
   /// Custom styles for HTML tags
   final List<Font> fontFallback;
 
+  /// Custom builder for bullet list items
+  /// If provided, this builder will be used instead of the default bullet list widget
+  /// Parameters: childValue (Widget) - the content widget, customStyles (HtmlTagStyle) - styling options
+  final Widget Function(Widget childValue, HtmlTagStyle customStyles)?
+      bulletListBuilder;
+
+  /// Custom builder for numbered list items
+  /// If provided, this builder will be used instead of the default numbered list widget
+  /// Parameters: childValue (Widget) - the content widget, index (int) - the list item index (1-based),
+  /// baseTextStyle (TextStyle) - base text style, customStyles (HtmlTagStyle) - styling options
+  final Widget Function(Widget childValue, int index, TextStyle baseTextStyle,
+      HtmlTagStyle customStyles)? numberListBuilder;
+
+  /// Custom builder for quote widgets
+  /// If provided, this builder will be used instead of the default quote widget
+  /// Parameters: childValue (Widget) - the content widget, customStyles (HtmlTagStyle) - styling options
+  final Widget Function(Widget childValue, HtmlTagStyle customStyles)?
+      quoteBuilder;
+
   /// Constructor for the HTML decoder
   WidgetsHTMLDecoder({
     this.fontResolver,
@@ -41,6 +57,9 @@ class WidgetsHTMLDecoder {
     this.wrapInParagraph = false,
     this.defaultFontSize = 12.0,
     this.defaultFontHeight = 1.2,
+    this.bulletListBuilder,
+    this.numberListBuilder,
+    this.quoteBuilder,
   });
 
   //// The class takes an HTML string as input and returns a list of Widgets. The Widgets
@@ -92,6 +111,7 @@ class WidgetsHTMLDecoder {
     TextAlign? textAlign;
     bool checkbox = false;
     bool alreadyChecked = false;
+    bool lastWasParagraph = false;
 
     ///find dom node in and check if its element or not than convert it according to its specs
     for (final domNode in domNodes) {
@@ -152,6 +172,7 @@ class WidgetsHTMLDecoder {
               ),
             ]));
             alreadyChecked = false;
+            lastWasParagraph = false;
           } else {
             if (localName == HTMLTags.checkbox) {
               final checked = domNode.attributes["type"];
@@ -161,6 +182,16 @@ class WidgetsHTMLDecoder {
                 alreadyChecked = domNode.attributes.keys.contains("checked");
               }
             }
+
+            final isParagraph = localName == HTMLTags.paragraph;
+
+            // Add spacing between consecutive paragraphs
+            if (isParagraph &&
+                lastWasParagraph &&
+                customStyles.paragraphGap > 0) {
+              result.add(SizedBox(height: customStyles.paragraphGap));
+            }
+
             result.addAll(
               await _parseSpecialElements(
                 domNode,
@@ -168,6 +199,8 @@ class WidgetsHTMLDecoder {
                 type: BuiltInAttributeKey.bulletedList,
               ),
             );
+
+            lastWasParagraph = isParagraph;
           }
 
           /// Handle special elements (e.g., headings, lists, images)
@@ -177,6 +210,7 @@ class WidgetsHTMLDecoder {
               thickness: customStyles.dividerthickness,
               height: customStyles.dividerHight,
               borderStyle: customStyles.dividerBorderStyle));
+          lastWasParagraph = false;
         }
       } else if (domNode is dom.Text) {
         if (delta.isNotEmpty && domNode.text.trim().isNotEmpty) {
@@ -196,6 +230,7 @@ class WidgetsHTMLDecoder {
         } else {
           result.add(Text(domNode.text, style: baseTextStyle));
         }
+        lastWasParagraph = false;
 
         /// Process text nodes and add them to delta
       } else {
@@ -562,8 +597,10 @@ class WidgetsHTMLDecoder {
             type: BuiltInAttributeKey.quote));
       }
     } else {
-      result.add(
-          buildQuotewidget(Text(element.text), customStyles: customStyles));
+      final widget = Text(element.text);
+      result.add(quoteBuilder != null
+          ? quoteBuilder!(widget, customStyles)
+          : buildQuotewidget(widget, customStyles: customStyles));
     }
     return result;
   }
@@ -578,9 +615,27 @@ class WidgetsHTMLDecoder {
         result.addAll(await _parseListElement(child, baseTextStyle,
             type: BuiltInAttributeKey.bulletedList));
       }
+
+      // Wrap list items in a Column with spacing if there are multiple items
+      if (result.length > 1) {
+        return [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: result
+                .expand((widget) => [
+                      widget,
+                      SizedBox(height: customStyles.listItemGap),
+                    ])
+                .take(result.length * 2 - 1)
+                .toList(),
+          )
+        ];
+      }
     } else {
-      result.add(
-          buildBulletwidget(Text(element.text), customStyles: customStyles));
+      final widget = Text(element.text);
+      result.add(bulletListBuilder != null
+          ? bulletListBuilder!(widget, customStyles)
+          : buildBulletwidget(widget, customStyles: customStyles));
     }
     return result;
   }
@@ -596,9 +651,30 @@ class WidgetsHTMLDecoder {
         result.addAll(await _parseListElement(child, baseTextStyle,
             type: BuiltInAttributeKey.numberList, index: i + 1));
       }
+
+      // Wrap list items in a Column with spacing if there are multiple items
+      if (result.length > 1) {
+        return [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: result
+                .expand((widget) => [
+                      widget,
+                      SizedBox(height: customStyles.listItemGap),
+                    ])
+                .take(result.length * 2 - 1)
+                .toList(),
+          )
+        ];
+      }
     } else {
-      result.add(buildNumberwdget(Text(element.text),
-          baseTextStyle: baseTextStyle, customStyles: customStyles, index: 1));
+      final widget = Text(element.text);
+      result.add(numberListBuilder != null
+          ? numberListBuilder!(widget, 1, baseTextStyle, customStyles)
+          : buildNumberwdget(widget,
+              baseTextStyle: baseTextStyle,
+              customStyles: customStyles,
+              index: 1));
     }
     return result;
   }
@@ -614,20 +690,30 @@ class WidgetsHTMLDecoder {
 
     /// Build a bullet list widget
     if (type == BuiltInAttributeKey.bulletedList) {
-      return [buildBulletwidget(delta, customStyles: customStyles)];
+      return [
+        bulletListBuilder != null
+            ? bulletListBuilder!(delta, customStyles)
+            : buildBulletwidget(delta, customStyles: customStyles)
+      ];
 
       /// Build a numbered list widget
     } else if (type == BuiltInAttributeKey.numberList) {
       return [
-        buildNumberwdget(delta,
-            index: index!,
-            customStyles: customStyles,
-            baseTextStyle: baseTextStyle)
+        numberListBuilder != null
+            ? numberListBuilder!(delta, index!, baseTextStyle, customStyles)
+            : buildNumberwdget(delta,
+                index: index!,
+                customStyles: customStyles,
+                baseTextStyle: baseTextStyle)
       ];
 
       /// Build a quote  widget
     } else if (type == BuiltInAttributeKey.quote) {
-      return [buildQuotewidget(delta, customStyles: customStyles)];
+      return [
+        quoteBuilder != null
+            ? quoteBuilder!(delta, customStyles)
+            : buildQuotewidget(delta, customStyles: customStyles)
+      ];
     } else {
       return [delta];
     }
